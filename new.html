@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mapa z formularzem Google</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 1em; }
+    #map { height: 500px; width: 100%; max-width: 700px; margin-bottom: 1em; }
+    button { padding: 10px 15px; font-size: 16px; }
+    #coords { font-weight: bold; margin: 10px 0; }
+  </style>
+</head>
+<body>
+
+  <h2>Kliknij na mapie, aby wybrać lokalizację</h2>
+  <div id="map"></div>
+  <div id="coords">Współrzędne: brak</div>
+  <button id="openFormBtn" disabled>Otwórz formularz z uzupełnionymi współrzędnymi</button>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([50.061, 19.937], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+    }).addTo(map);
+
+    let marker = null;
+    let selectedCoords = null;
+
+    const entryId = "entry.1689886850"; // <- Twój entryID z formularza Google
+    const googleFormBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLSeXzKx_GV5ZDpUx9Y6hnen19RWgm9pQEq7tPena5zlB2DAonw/viewform";
+
+    const coordsDisplay = document.getElementById("coords");
+    const openFormBtn = document.getElementById("openFormBtn");
+
+    map.on('click', function(e) {
+      const lat = e.latlng.lat.toFixed(6);
+      const lng = e.latlng.lng.toFixed(6);
+      selectedCoords = `${lat},${lng}`;
+
+      if (marker) {
+        marker.setLatLng(e.latlng);
+      } else {
+        marker = L.marker(e.latlng).addTo(map);
+      }
+
+      coordsDisplay.textContent = `Współrzędne: ${selectedCoords}`;
+      openFormBtn.disabled = false;
+    });
+
+    openFormBtn.addEventListener("click", function() {
+      if (!selectedCoords) return;
+      const fullURL = `${googleFormBaseURL}?usp=pp_url&${entryId}=${encodeURIComponent(selectedCoords)}`;
+      window.open(fullURL, "_blank");
+    });
+  </script>
+</body>
+</html>
