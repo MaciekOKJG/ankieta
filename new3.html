@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mapa z formularzem Google</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0 auto;
+      padding: 1em;
+      max-width: 1200px;
+    }
+    #map {
+      height: 700px;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      margin: 5px 0;
+      cursor: pointer;
+    }
+    #coords {
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .point-container {
+      margin-bottom: 1.5em;
+      border: 1px solid #ccc;
+      padding: 1em;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+    .iframe-container {
+      margin-top: 10px;
+    }
+    iframe {
+      width: 100%;
+      height: 500px;
+      border: 1px solid #ccc;
+    }
+    .form-section {
+      margin: 1em 0;
+    }
+    input[type="text"] {
+      padding: 5px;
+      font-size: 16px;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 10px;
+    }
+    #message {
+      display: inline-block;
+      margin-left: 1em;
+      font-weight: bold;
+      color: #007bff;
+    }
+    .point-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .point-label {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .toggle-btn {
+      padding: 5px 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Ankieta</h2>
+  <p>W celu dodania zdarzenia proszę zaznaczyć punkt na mapie i przejść do formularza.<br>
+    <strong>Jeśli chce Pan/Pani dodać wiele zdarzeń, proszę ustawić nowy punkt i przejść do osobnego formularza.</strong>
+  </p>
+
+  <div class="form-section">
+    <label for="instytucja">Nazwa instytucji:</label><br>
+    <input type="text" id="instytucja" /><br>
+
+    <label for="nazwisko">Imię i nazwisko osoby wypełniającej:</label><br>
+    <input type="text" id="nazwisko" />
+  </div>
+
+  <div id="map"></div>
+  <div id="coords">Współrzędne: brak</div>
+
+  <button id="addPointBtn">Ustaw nowy punkt</button>
+  <span id="message"></span>
+
+  <div id="formLinks"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([50.061, 19.937], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+    }).addTo(map);
+
+    let currentMarker = null;
+    let tempLat = null;
+    let tempLng = null;
+    let pointCount = 0;
+    const previousMarkers = [];
+
+    const entryInstytucja = "entry.11696642";
+    const entryNazwisko = "entry.958117140";
+    const entryLat = "entry.1296169671";
+    const entryLng = "entry.827627395";
+    const googleFormBaseURL = "https://docs.google.com/forms/d/e/1FAIpQLScF-NbUyncre-h2FipRrReD8mKeBdb3bdx8baV9GkavBRLOyg/viewform";
+
+    const coordsDisplay = document.getElementById("coords");
+    const formLinksContainer = document.getElementById("formLinks");
+    const messageSpan = document.getElementById("message");
+
+    map.on('click', function (e) {
+      tempLat = e.latlng.lat.toFixed(6);
+      tempLng = e.latlng.lng.toFixed(6);
+
+      if (currentMarker) {
+        currentMarker.setLatLng(e.latlng);
+      } else {
+        currentMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+      }
+
+      coordsDisplay.textContent = `Współrzędne: ${tempLat}, ${tempLng}`;
+    });
+
+    document.getElementById("addPointBtn").addEventListener("click", () => {
+      const instytucja = document.getElementById("instytucja").value.trim();
+      const nazwisko = document.getElementById("nazwisko").value.trim();
+
+      if (!tempLat || !tempLng) {
+        alert("Proszę kliknąć na mapie, aby ustawić punkt.");
+        return;
+      }
+
+      if (!instytucja || !nazwisko) {
+        alert("Proszę wypełnić pola: instytucja i nazwisko.");
+        return;
+      }
+
+      pointCount += 1;
+
+      const marker = L.circleMarker([tempLat, tempLng], {
+        radius: 10,
+        fillColor: "#007bff",
+        color: "#000",
+        weight: 1,
+        fillOpacity: 0.5
+      }).addTo(map);
+      marker.bindTooltip(`${pointCount}`, { permanent: true, direction: 'right' });
+      previousMarkers.push(marker);
+
+      const url = `${googleFormBaseURL}?usp=pp_url&${entryInstytucja}=${encodeURIComponent(instytucja)}&${entryNazwisko}=${encodeURIComponent(nazwisko)}&${entryLat}=${encodeURIComponent(tempLat)}&${entryLng}=${encodeURIComponent(tempLng)}`;
+
+      const container = document.createElement("div");
+      container.className = "point-container";
+
+      const headerDiv = document.createElement("div");
+      headerDiv.className = "point-header";
+
+      const label = document.createElement("span");
+      label.className = "point-label";
+      label.textContent = `Punkt ${pointCount}:`;
+
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "toggle-btn";
+      toggleBtn.textContent = "Zwiń";
+
+      headerDiv.appendChild(label);
+      headerDiv.appendChild(toggleBtn);
+
+      const iframe = document.createElement("iframe");
+      iframe.src = url;
+
+      const iframeWrapper = document.createElement("div");
+      iframeWrapper.className = "iframe-container";
+      iframeWrapper.appendChild(iframe);
+
+      toggleBtn.addEventListener("click", () => {
+        if (iframe.style.display === "none") {
+          iframe.style.display = "block";
+          toggleBtn.textContent = "Zwiń";
+        } else {
+          iframe.style.display = "none";
+          toggleBtn.textContent = "Rozwiń";
+        }
+      });
+
+      container.appendChild(headerDiv);
+      container.appendChild(iframeWrapper);
+      formLinksContainer.appendChild(container);
+
+      container.scrollIntoView({ behavior: "smooth" });
+
+      if (pointCount > 1) {
+        messageSpan.textContent = "Nowy formularz znajduje się na dole strony.";
+      } else {
+        messageSpan.textContent = "";
+      }
+
+      if (currentMarker) {
+        map.removeLayer(currentMarker);
+        currentMarker = null;
+      }
+      tempLat = null;
+      tempLng = null;
+      coordsDisplay.textContent = "Współrzędne: brak";
+    });
+  </script>
+</body>
+</html>
